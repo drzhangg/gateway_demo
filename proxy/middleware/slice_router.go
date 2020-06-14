@@ -82,7 +82,7 @@ func (w *SliceRouterHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request
 	}
 }
 
-func NewSliceRouterHandle(coreFunc func(*SliceRouterContext) http.Handler, router *SliceRouter) *SliceRouterHandler {
+func NewSliceRouterHandler(coreFunc func(*SliceRouterContext) http.Handler, router *SliceRouter) *SliceRouterHandler {
 	return &SliceRouterHandler{
 		coreFunc: coreFunc,
 		router:   router,
