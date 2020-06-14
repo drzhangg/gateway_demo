@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -9,7 +12,7 @@ import (
 )
 
 var (
-	addr = "http://127.0.0.1:2002"
+	addr = "127.0.0.1:2002"
 )
 
 func main() {
@@ -39,7 +42,19 @@ func NewSingleHostReverseProxy(target *url.URL) *httputil.ReverseProxy {
 			req.Header.Set("User-Agent", "")
 		}
 	}
-	return &httputil.ReverseProxy{Director: director}
+
+	modifyFunc := func(res *http.Response) error {
+		oldPayload, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		newPayload := []byte("hello " + string(oldPayload))
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(newPayload))
+		res.ContentLength = int64(len(newPayload))
+		res.Header.Set("Content-Length", fmt.Sprint(len(newPayload)))
+		return nil
+	}
+	return &httputil.ReverseProxy{Director: director, ModifyResponse: modifyFunc}
 }
 
 func singleJoiningSlash(a, b string) string {
