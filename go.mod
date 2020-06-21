@@ -2,4 +2,7 @@ module gateway_demo
 
 go 1.14
 
-require google.golang.org/grpc v1.29.1 // indirect
+require (
+	github.com/golang/protobuf v1.3.3
+	google.golang.org/grpc v1.29.1
+)
