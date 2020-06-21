@@ -7,6 +7,7 @@ import (
 	proto "gateway_demo/demo/proxy/grpc_server_client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"io"
 	"log"
 	"net"
 )
@@ -22,19 +23,61 @@ type server struct {
 
 func (s *server) UnaryEcho(ctx context.Context, in *proto.EchoRequest) (*proto.EchoResponse, error) {
 	fmt.Printf("----- UnaryEcho ----\n")
-	metadata.FromIncomingContext(ctx)
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		log.Println("miss metadata from context")
+	}
+	fmt.Println("md", md)
+	fmt.Printf("request received: %v, sending echo\n", in)
+	return &proto.EchoResponse{Message: in.Message}, nil
 }
 
 func (s *server) ServerStreamingEcho(in *proto.EchoRequest, stream proto.Echo_ServerStreamingEchoServer) error {
-
+	fmt.Printf("---- ServerStreamingEcho ---\n")
+	fmt.Printf("request received: %v\n", in)
+	for i := 0; i < streamingCount; i++ {
+		fmt.Printf("echo message %v\n", in.Message)
+		err := stream.Send(&proto.EchoResponse{Message: in.Message})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *server) ClientStreamingEcho(stream proto.Echo_ClientStreamingEchoServer) error {
+	fmt.Printf("--- ClientStreamingEcho ---\n")
 
+	var message string
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			fmt.Printf("echo last received message\n")
+			return stream.SendAndClose(&proto.EchoResponse{Message: message})
+		}
+		message = in.Message
+		fmt.Printf("request received：%v, building echo\n", in)
+		if err != nil {
+			return err
+		}
+	}
 }
 
-func (s *server) BidirectionalStreamEcho(steam proto.Echo_BidirectionalStreamEchoServer) error {
-
+func (s *server) BidirectionalStreamEcho(stream proto.Echo_BidirectionalStreamEchoServer) error {
+	fmt.Printf("--- BidirectionalStreamingEcho ---\n")
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Printf("request received %v, sending echo\n", in)
+		if err := stream.Send(&proto.EchoResponse{Message: in.Message}); err != nil {
+			return err
+		}
+	}
 }
 
 func main() {
